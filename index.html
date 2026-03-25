@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My App">
+<meta name="theme-color" content="#0c0c10">
+<title>My Productivity App</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;margin:0;padding:0;}
+body{background:#0c0c10;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;overflow:hidden;height:100dvh;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);}
+input,button{-webkit-appearance:none;appearance:none;font-family:inherit;}
+.scr{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;display:none;flex-direction:column;}
+.scr.active{display:flex;}
+.scr::-webkit-scrollbar{display:none}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:8px 0 4px;transition:all 0.2s;font-family:inherit;position:relative;}
+.tring{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes fadeIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-8px)}80%{transform:translateX(8px)}}
+@keyframes faceRing{0%{box-shadow:0 0 0 0 rgba(255,255,255,0.4)}70%{box-shadow:0 0 0 20px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+</style>
+</head>
+<body>
+
+<!-- ── LOCK SCREEN ── -->
+<div id="lockScreen" style="position:fixed;inset:0;background:#0c0c10;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 32px;padding-top:calc(40px + env(safe-area-inset-top));padding-bottom:calc(40px + env(safe-area-inset-bottom));">
+  <div style="animation:fadeIn 0.5s ease">
+    <!-- App icon -->
+    <div style="width:80px;height:80px;border-radius:22px;background:linear-gradient(135deg,#1c1c28,#2a2a3e);border:0.5px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"><path d="M9 5h10M9 12h10M9 19h7"/><path d="M5 5l-1.5 1.5L2 5M5 12l-1.5 1.5L2 12M5 19l-1.5 1.5L2 19"/></svg>
+    </div>
+    <div style="font-size:24px;font-weight:700;color:#fff;text-align:center;margin-bottom:6px">My Productivity</div>
+    <div id="lockMsg" style="font-size:15px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:56px">Use Face ID to unlock</div>
+
+    <!-- Face ID button -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:16px">
+      <button id="faceBtn" onclick="tryFaceID()" style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s">
+        <!-- Face ID icon -->
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
+          <path d="M4 14V9a5 5 0 015-5h5"/>
+          <path d="M26 4h5a5 5 0 015 5v5"/>
+          <path d="M36 26v5a5 5 0 01-5 5h-5"/>
+          <path d="M14 36H9a5 5 0 01-5-5v-5"/>
+          <circle cx="14" cy="16" r="1.5" fill="white" stroke="none"/>
+          <circle cx="26" cy="16" r="1.5" fill="white" stroke="none"/>
+          <path d="M14 26s1.5 3 6 3 6-3 6-3"/>
+          <path d="M20 16v5"/>
+        </svg>
+      </button>
+      <div style="font-size:13px;color:rgba(255,255,255,0.35)">Tap to unlock</div>
+    </div>
+
+    <!-- PIN fallback -->
+    <div id="pinSection" style="display:none;margin-top:40px">
+      <div style="font-size:13px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:14px">Enter PIN instead</div>
+      <div style="display:flex;gap:12px;justify-content:center;margin-bottom:16px">
+        <input id="p0" type="password" inputmode="numeric" maxlength="1" style="width:48px;height:56px;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.15);border-radius:12px;color:#fff;font-size:22px;font-weight:700;text-align:center;outline:none;" oninput="pinNext(0)">
+        <input id="p1" type="password" inputmode="numeric" maxlength="1" style="width:48px;height:56px;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.15);border-radius:12px;color:#fff;font-size:22px;font-weight:700;text-align:center;outline:none;" oninput="pinNext(1)">
+        <input id="p2" type="password" inputmode="numeric" maxlength="1" style="width:48px;height:56px;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.15);border-radius:12px;color:#fff;font-size:22px;font-weight:700;text-align:center;outline:none;" oninput="pinNext(2)">
+        <input id="p3" type="password" inputmode="numeric" maxlength="1" style="width:48px;height:56px;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.15);border-radius:12px;color:#fff;font-size:22px;font-weight:700;text-align:center;outline:none;" oninput="pinNext(3)">
+      </div>
+      <div id="pinErr" style="font-size:13px;color:#ff3b30;text-align:center;height:18px"></div>
+    </div>
+
+    <button onclick="togglePin()" style="background:none;border:none;color:rgba(255,255,255,0.25);font-size:13px;cursor:pointer;margin-top:32px;display:block;width:100%;text-align:center" id="pinToggleBtn">Use PIN instead</button>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<!-- TASKS -->
+<div id="s0" class="scr active">
+  <div style="padding:18px 22px 6px;flex-shrink:0">
+    <div style="font-size:32px;font-weight:700;color:#fff;letter-spacing:-0.5px">My Tasks</div>
+    <div id="td" style="font-size:13px;color:rgba(255,255,255,0.35);margin-top:3px"></div>
+  </div>
+  <div style="display:flex;gap:8px;padding:10px 22px 12px;flex-shrink:0">
+    <input id="ti" placeholder="Add a task..." style="flex:1;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.12);border-radius:12px;padding:13px 14px;color:#fff;font-size:16px;outline:none;">
+    <button onclick="addTask()" style="background:#0a84ff;border:none;border-radius:12px;padding:13px 18px;color:#fff;font-size:24px;font-weight:300;cursor:pointer;line-height:1">+</button>
+  </div>
+  <div style="padding:0 22px 8px;font-size:10.5px;font-weight:600;color:rgba(255,255,255,0.22);letter-spacing:0.1em;flex-shrink:0">SWIPE LEFT TO DELETE</div>
+  <div id="tl" style="padding-bottom:16px;flex:1"></div>
+</div>
+
+<!-- GYM -->
+<div id="s1" class="scr">
+  <div style="padding:18px 22px 0;flex-shrink:0">
+    <div style="font-size:32px;font-weight:700;color:#fff;letter-spacing:-0.5px">Gym Log</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;background:#1b1b23;border-radius:14px;padding:10px 14px">
+      <button onclick="gymDateShift(-1)" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:26px;cursor:pointer;padding:4px 10px;line-height:1">‹</button>
+      <div style="text-align:center">
+        <div id="gdlbl" style="font-size:16px;font-weight:600;color:#fff"></div>
+        <div id="gdday" style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px"></div>
+      </div>
+      <button id="gnext" onclick="gymDateShift(1)" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:26px;cursor:pointer;padding:4px 10px;line-height:1">›</button>
+    </div>
+    <div id="timerBar" style="margin-top:10px;background:#1b1b23;border-radius:14px;padding:12px 16px;display:none;align-items:center;gap:12px">
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:600;color:rgba(255,149,0,0.7);letter-spacing:0.08em;margin-bottom:4px">REST TIMER</div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:4px;height:4px;overflow:hidden">
+          <div id="timerTrack" style="height:100%;background:#ff9500;border-radius:4px;transition:width 1s linear;width:100%"></div>
+        </div>
+      </div>
+      <div id="timerDisplay" class="tring" style="font-size:28px;font-weight:700;color:#ff9500;min-width:54px;text-align:right"></div>
+      <button onclick="stopTimer()" style="background:rgba(255,255,255,0.07);border:none;border-radius:10px;padding:6px 12px;color:rgba(255,255,255,0.45);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+  </div>
+  <div style="padding:10px 22px 10px;flex-shrink:0">
+    <button onclick="openExModal()" style="width:100%;background:rgba(255,149,0,0.1);border:0.5px solid rgba(255,149,0,0.22);border-radius:14px;padding:14px;color:#ff9500;font-size:16px;font-weight:600;cursor:pointer">+ Add Exercise</button>
+  </div>
+  <div id="gl" style="padding:0 22px 16px;flex:1"></div>
+</div>
+
+<!-- HABITS -->
+<div id="s2" class="scr">
+  <div style="padding:18px 22px 6px;flex-shrink:0">
+    <div style="font-size:32px;font-weight:700;color:#fff;letter-spacing:-0.5px">Daily Habits</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;background:#1b1b23;border-radius:14px;padding:10px 14px">
+      <button onclick="habitDateShift(-1)" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:26px;cursor:pointer;padding:4px 10px;line-height:1">‹</button>
+      <div style="text-align:center">
+        <div id="hdlbl" style="font-size:16px;font-weight:600;color:#fff"></div>
+        <div id="hdday" style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px"></div>
+      </div>
+      <button id="hnext" onclick="habitDateShift(1)" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:26px;cursor:pointer;padding:4px 10px;line-height:1">›</button>
+    </div>
+  </div>
+  <div style="padding:8px 22px 4px;flex-shrink:0">
+    <div id="hp" style="font-size:13px;color:rgba(255,255,255,0.35);margin-bottom:8px"></div>
+    <div style="background:rgba(255,255,255,0.06);border-radius:8px;height:5px;overflow:hidden">
+      <div id="hb" style="background:#30d158;height:100%;width:0%;transition:width 0.4s ease;border-radius:8px"></div>
+    </div>
+  </div>
+  <div style="padding:4px 22px 6px;font-size:10.5px;font-weight:600;color:rgba(255,255,255,0.22);letter-spacing:0.1em;flex-shrink:0">SWIPE LEFT TO DELETE</div>
+  <div id="hl" style="flex:1;padding-bottom:8px"></div>
+  <div id="habitAddRow" style="padding:4px 22px 16px;display:flex;gap:8px;flex-shrink:0">
+    <input id="hi" placeholder="Add a new habit..." style="flex:1;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.12);border-radius:12px;padding:12px 14px;color:#fff;font-size:15px;outline:none;">
+    <button onclick="addHabit()" style="background:rgba(48,209,88,0.1);border:0.5px solid rgba(48,209,88,0.25);border-radius:12px;padding:12px 16px;color:#30d158;font-size:22px;cursor:pointer;line-height:1">+</button>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="md" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;flex-direction:column;justify-content:flex-end;z-index:100">
+  <div id="ms" style="background:#1d1d26;border-radius:24px 24px 0 0;padding:24px;padding-bottom:calc(32px + env(safe-area-inset-bottom));transition:transform 0.3s ease;transform:translateY(100%)">
+    <div style="width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 22px"></div>
+    <div id="mc"></div>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<div style="flex-shrink:0;background:rgba(14,14,20,0.98);border-top:0.5px solid rgba(255,255,255,0.1);">
+  <div style="display:flex;align-items:flex-start;padding-top:6px;padding-bottom:calc(12px + env(safe-area-inset-bottom));">
+    <button id="n0" class="nb" onclick="nav(0)">
+      <div id="pill0" style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:36px;height:3px;border-radius:0 0 3px 3px;background:#0a84ff;opacity:1;transition:opacity 0.2s"></div>
+      <div id="ic0" style="width:32px;height:32px;border-radius:10px;background:rgba(10,132,255,0.18);display:flex;align-items:center;justify-content:center;transition:all 0.2s">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0a84ff" stroke-width="2" stroke-linecap="round"><path d="M9 5h10M9 12h10M9 19h7"/><path d="M5 5l-1.5 1.5L2 5M5 12l-1.5 1.5L2 12M5 19l-1.5 1.5L2 19"/></svg>
+      </div>
+      <span id="lb0" style="font-size:10px;font-weight:600;color:#0a84ff;transition:color 0.2s">Tasks</span>
+    </button>
+    <button id="n1" class="nb" onclick="nav(1)">
+      <div id="pill1" style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:36px;height:3px;border-radius:0 0 3px 3px;background:#ff9500;opacity:0;transition:opacity 0.2s"></div>
+      <div id="ic1" style="width:32px;height:32px;border-radius:10px;background:transparent;display:flex;align-items:center;justify-content:center;transition:all 0.2s">
+        <svg width="19" height="19" viewBox="0 0 24 24"><rect x="2" y="9" width="3" height="6" rx="1" fill="rgba(255,255,255,0.28)"/><rect x="19" y="9" width="3" height="6" rx="1" fill="rgba(255,255,255,0.28)"/><rect x="4.5" y="10.5" width="15" height="3" rx="1" fill="rgba(255,255,255,0.28)"/><rect x="5.5" y="7" width="2" height="10" rx="1" fill="rgba(255,255,255,0.28)"/><rect x="16.5" y="7" width="2" height="10" rx="1" fill="rgba(255,255,255,0.28)"/></svg>
+      </div>
+      <span id="lb1" style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.28);transition:color 0.2s">Gym</span>
+    </button>
+    <button id="n2" class="nb" onclick="nav(2)">
+      <div id="pill2" style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:36px;height:3px;border-radius:0 0 3px 3px;background:#30d158;opacity:0;transition:opacity 0.2s"></div>
+      <div id="ic2" style="width:32px;height:32px;border-radius:10px;background:transparent;display:flex;align-items:center;justify-content:center;transition:all 0.2s">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg>
+      </div>
+      <span id="lb2" style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.28);transition:color 0.2s">Habits</span>
+    </button>
+  </div>
+</div>
+
+<script>
+// ── HELPERS ──────────────────────────────────────────────
+const dN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const mN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function fmtLabel(d){
+  const t=new Date();t.setHours(0,0,0,0);
+  const dd=new Date(d);dd.setHours(0,0,0,0);
+  const diff=Math.round((dd-t)/86400000);
+  if(diff===0)return'Today';if(diff===-1)return'Yesterday';if(diff===1)return'Tomorrow';
+  return dN[d.getDay()]+', '+mN[d.getMonth()]+' '+d.getDate();
+}
+function fmtSub(d){return mN[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function load(k,d){try{const v=localStorage.getItem(k);return v!=null?JSON.parse(v):d;}catch(e){return d;}}
+
+const today=new Date();
+const todayKey=fmtKey(today);
+document.getElementById('td').textContent=dN[today.getDay()]+', '+mN[today.getMonth()]+' '+today.getDate();
+
+// ── FACE ID / AUTH ────────────────────────────────────────
+const CORRECT_PIN='1234'; // default PIN - user can change below
+let pinShowing=false;
+let unlocked=false;
+
+// Auto-lock when app goes to background
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){unlocked=false;}
+  else if(!unlocked){showLock();}
+});
+
+function showLock(){
+  document.getElementById('lockScreen').style.display='flex';
+  unlocked=false;
+  setLockMsg('Use Face ID to unlock');
+  // Auto-trigger Face ID on show
+  setTimeout(()=>tryFaceID(),400);
+}
+
+function unlock(){
+  unlocked=true;
+  const ls=document.getElementById('lockScreen');
+  ls.style.transition='opacity 0.3s ease';
+  ls.style.opacity='0';
+  setTimeout(()=>{ls.style.display='none';ls.style.opacity='1';},300);
+}
+
+function setLockMsg(msg,color='rgba(255,255,255,0.4)'){
+  const el=document.getElementById('lockMsg');
+  el.textContent=msg;el.style.color=color;
+}
+
+async function tryFaceID(){
+  const btn=document.getElementById('faceBtn');
+  btn.style.animation='faceRing 0.8s ease';
+  btn.style.borderColor='rgba(255,255,255,0.5)';
+  setLockMsg('Looking for Face ID…');
+
+  // Use WebAuthn if available (triggers Face ID on iPhone)
+  if(window.PublicKeyCredential){
+    try{
+      // Check if a credential is already registered
+      const credId=load('faceCredId',null);
+      if(!credId){
+        // First time — register Face ID
+        setLockMsg('Setting up Face ID…');
+        const reg=await registerFaceID();
+        if(reg){unlock();}
+        else{fallbackMsg();}
+      } else {
+        // Authenticate with stored credential
+        const ok=await authenticateFaceID(credId);
+        if(ok){unlock();}
+        else{fallbackMsg();}
+      }
+    } catch(e){
+      // User cancelled or not supported
+      fallbackMsg();
+    }
+  } else {
+    fallbackMsg();
+  }
+  setTimeout(()=>{btn.style.animation='';btn.style.borderColor='rgba(255,255,255,0.15)';},900);
+}
+
+async function registerFaceID(){
+  try{
+    const challenge=new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    const cred=await navigator.credentials.create({
+      publicKey:{
+        challenge,
+        rp:{name:'My Productivity App'},
+        user:{id:new Uint8Array(16),name:'user',displayName:'User'},
+        pubKeyCredParams:[{alg:-7,type:'public-key'},{alg:-257,type:'public-key'}],
+        authenticatorSelection:{
+          authenticatorAttachment:'platform',
+          userVerification:'required'
+        },
+        timeout:60000
+      }
+    });
+    if(cred){
+      // Store credential ID as base64
+      const idArr=new Uint8Array(cred.rawId);
+      const b64=btoa(String.fromCharCode(...idArr));
+      save('faceCredId',b64);
+      return true;
+    }
+    return false;
+  }catch(e){return false;}
+}
+
+async function authenticateFaceID(b64Id){
+  try{
+    const challenge=new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    // Decode stored credential ID
+    const raw=atob(b64Id);
+    const credId=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++)credId[i]=raw.charCodeAt(i);
+    const assertion=await navigator.credentials.get({
+      publicKey:{
+        challenge,
+        allowCredentials:[{id:credId,type:'public-key'}],
+        userVerification:'required',
+        timeout:60000
+      }
+    });
+    return !!assertion;
+  }catch(e){return false;}
+}
+
+function fallbackMsg(){
+  setLockMsg('Face ID unavailable — use PIN','rgba(255,255,255,0.35)');
+  if(!pinShowing){pinShowing=true;document.getElementById('pinSection').style.display='block';document.getElementById('pinToggleBtn').style.display='none';}
+}
+
+function togglePin(){
+  pinShowing=!pinShowing;
+  document.getElementById('pinSection').style.display=pinShowing?'block':'none';
+  document.getElementById('pinToggleBtn').textContent=pinShowing?'Use Face ID instead':'Use PIN instead';
+  if(pinShowing)setTimeout(()=>document.getElementById('p0').focus(),100);
+}
+
+function pinNext(i){
+  const val=document.getElementById('p'+i).value;
+  if(val.length===1&&i<3)document.getElementById('p'+(i+1)).focus();
+  if(i===3&&val.length===1)checkPin();
+}
+
+function checkPin(){
+  const pin=[0,1,2,3].map(i=>document.getElementById('p'+i).value).join('');
+  const stored=load('userPin',CORRECT_PIN);
+  if(pin===stored){
+    document.getElementById('pinErr').textContent='';
+    unlock();
+    [0,1,2,3].forEach(i=>document.getElementById('p'+i).value='');
+  } else {
+    document.getElementById('pinErr').textContent='Incorrect PIN';
+    document.getElementById('pinSection').style.animation='shake 0.4s ease';
+    setTimeout(()=>{document.getElementById('pinSection').style.animation='';},400);
+    [0,1,2,3].forEach(i=>document.getElementById('p'+i).value='');
+    document.getElementById('p0').focus();
+  }
+}
+
+// ── TASKS ─────────────────────────────────────────────────
+let tasks=load('tasks',[]);
+let tid=load('tid',10);
+let openTaskCard=null;
+function saveTasks(){save('tasks',tasks);save('tid',tid);}
+function renderTasks(){
+  const list=document.getElementById('tl');list.innerHTML='';
+  if(!tasks.length){const e=document.createElement('div');e.style.cssText='text-align:center;padding:50px 22px;color:rgba(255,255,255,0.15);font-size:15px';e.textContent='No tasks yet. Add one above!';list.appendChild(e);return;}
+  tasks.forEach(t=>{
+    const wrap=document.createElement('div');wrap.style.cssText='position:relative;margin:0 22px 10px;border-radius:14px;overflow:hidden;flex-shrink:0';
+    const delbg=document.createElement('div');delbg.style.cssText='position:absolute;right:0;top:0;bottom:0;width:80px;background:#ff3b30;display:flex;align-items:center;justify-content:center;cursor:pointer';
+    delbg.innerHTML='<svg width="20" height="22" viewBox="0 0 18 22" fill="none"><path d="M1 5h16M6 5V3h6v2M14 5l-1 14H5L4 5H14z" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    delbg.onclick=()=>{tasks=tasks.filter(x=>x.id!==t.id);saveTasks();renderTasks();};
+    const card=document.createElement('div');card.style.cssText='display:flex;align-items:center;gap:14px;padding:16px;background:#1b1b23;border-radius:14px;will-change:transform;transition:transform 0.28s ease';
+    const chk=document.createElement('div');chk.style.cssText=`width:24px;height:24px;border-radius:50%;border:1.5px solid ${t.done?'#30d158':'rgba(255,255,255,0.2)'};background:${t.done?'#30d158':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s`;
+    if(t.done)chk.innerHTML='<svg width="12" height="10" viewBox="0 0 11 9" fill="none"><path d="M1 4L4.5 8L10 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const txt=document.createElement('span');txt.style.cssText=`font-size:16px;color:${t.done?'rgba(255,255,255,0.28)':'rgba(255,255,255,0.9)'};flex:1;line-height:1.35;${t.done?'text-decoration:line-through':''}`;txt.textContent=t.text;
+    card.appendChild(chk);card.appendChild(txt);wrap.appendChild(delbg);wrap.appendChild(card);
+    let sx=0,moved=false,isOpen=false,active=false;
+    card.addEventListener('pointerdown',e=>{if(openTaskCard&&openTaskCard!==card){openTaskCard.style.transform='';openTaskCard=null;}sx=e.clientX;moved=false;active=true;card.style.transition='none';try{card.setPointerCapture(e.pointerId);}catch(e){}});
+    card.addEventListener('pointermove',e=>{if(!active)return;const dx=e.clientX-sx;if(Math.abs(dx)>6)moved=true;if(moved)card.style.transform=`translateX(${Math.min(0,Math.max((isOpen?-80:0)+dx,-80))}px)`;});
+    card.addEventListener('pointerup',e=>{if(!active)return;active=false;card.style.transition='transform 0.28s ease';const pos=(isOpen?-80:0)+(e.clientX-sx);if(pos<-36){card.style.transform='translateX(-80px)';isOpen=true;openTaskCard=card;}else{card.style.transform='';isOpen=false;if(openTaskCard===card)openTaskCard=null;if(!moved)toggleTask(t.id);}});
+    list.appendChild(wrap);
+  });
+}
+function addTask(){const i=document.getElementById('ti'),txt=i.value.trim();if(!txt)return;tasks.unshift({id:tid++,text:txt,done:false});saveTasks();i.value='';renderTasks();}
+function toggleTask(id){const t=tasks.find(x=>x.id===id);if(t){t.done=!t.done;saveTasks();renderTasks();}}
+document.getElementById('ti').addEventListener('keydown',e=>{if(e.key==='Enter')addTask();});
+
+// ── GYM ──────────────────────────────────────────────────
+let gymData=load('gymData',{});let exid=load('exid',50);
+let gymDate=new Date(),gymDateOffset=0;
+function getCurrentEx(){const k=fmtKey(gymDate);if(!gymData[k])gymData[k]=[];return gymData[k];}
+function saveGym(){save('gymData',gymData);save('exid',exid);}
+function gymDateShift(d){gymDateOffset+=d;gymDate=new Date(today);gymDate.setDate(gymDate.getDate()+gymDateOffset);updateGymDateUI();renderGym();}
+function updateGymDateUI(){document.getElementById('gdlbl').textContent=fmtLabel(gymDate);document.getElementById('gdday').textContent=fmtSub(gymDate);document.getElementById('gnext').style.opacity=gymDateOffset>=0?'0.2':'1';document.getElementById('gnext').style.pointerEvents=gymDateOffset>=0?'none':'auto';}
+let timerInterval=null,timerTotal=90,timerLeft=0;
+function startTimer(sec){stopTimer();timerTotal=sec;timerLeft=sec;document.getElementById('timerBar').style.display='flex';updateTimerUI();timerInterval=setInterval(()=>{timerLeft--;if(timerLeft<=0){stopTimer();return;}updateTimerUI();},1000);}
+function updateTimerUI(){const m=Math.floor(timerLeft/60),s=timerLeft%60;document.getElementById('timerDisplay').textContent=m>0?m+':'+String(s).padStart(2,'0'):s+'s';document.getElementById('timerTrack').style.width=Math.round(timerLeft/timerTotal*100)+'%';document.getElementById('timerDisplay').style.color=timerLeft<=10?'#ff3b30':'#ff9500';}
+function stopTimer(){if(timerInterval){clearInterval(timerInterval);timerInterval=null;}document.getElementById('timerBar').style.display='none';}
+function renderGym(){
+  updateGymDateUI();const list=document.getElementById('gl');list.innerHTML='';
+  const exes=getCurrentEx();
+  if(!exes.length){const e=document.createElement('div');e.style.cssText='text-align:center;padding:40px 22px;color:rgba(255,255,255,0.2);font-size:15px';e.textContent='No exercises logged for this day.';list.appendChild(e);return;}
+  exes.forEach(ex=>{
+    const card=document.createElement('div');card.style.cssText='background:#1b1b23;border-radius:16px;padding:16px;margin-bottom:12px';
+    const hdr=document.createElement('div');hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px';
+    const nm=document.createElement('div');nm.style.cssText='font-size:17px;font-weight:600;color:#fff';nm.textContent=ex.name;
+    const del=document.createElement('button');del.style.cssText='background:none;border:none;color:rgba(255,255,255,0.22);cursor:pointer;font-size:26px;line-height:1;padding:0';del.textContent='×';
+    del.onclick=()=>{const k=fmtKey(gymDate);gymData[k]=gymData[k].filter(e=>e.id!==ex.id);saveGym();renderGym();};
+    hdr.appendChild(nm);hdr.appendChild(del);
+    const setRow=document.createElement('div');setRow.style.cssText='display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:12px';
+    ex.sets.forEach((s,i)=>{const badge=document.createElement('div');badge.style.cssText='background:rgba(255,149,0,0.1);border:0.5px solid rgba(255,149,0,0.25);border-radius:20px;padding:6px 13px;font-size:14px;color:#ff9500;font-weight:500;cursor:pointer';badge.textContent=s.w>0?`${s.w}kg × ${s.r}`:`BW × ${s.r}`;badge.onclick=()=>openSetModal(ex.id,i);setRow.appendChild(badge);});
+    const addS=document.createElement('button');addS.style.cssText='background:rgba(255,149,0,0.05);border:0.5px solid rgba(255,149,0,0.15);border-radius:20px;padding:6px 13px;font-size:14px;color:rgba(255,149,0,0.5);font-weight:500;cursor:pointer';addS.textContent='+ Set';addS.onclick=()=>openSetModal(ex.id,null);setRow.appendChild(addS);
+    const tr=document.createElement('div');tr.style.cssText='display:flex;gap:8px;border-top:0.5px solid rgba(255,255,255,0.06);padding-top:10px';
+    [['60s',60],['90s',90],['2m',120],['3m',180]].forEach(([l,s])=>{const b=document.createElement('button');b.style.cssText='flex:1;background:rgba(255,255,255,0.05);border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 0;color:rgba(255,255,255,0.45);font-size:13px;font-weight:500;cursor:pointer';b.textContent='⏱ '+l;b.onclick=()=>startTimer(s);tr.appendChild(b);});
+    card.appendChild(hdr);card.appendChild(setRow);card.appendChild(tr);list.appendChild(card);
+  });
+}
+function openExModal(){document.getElementById('mc').innerHTML=`<div style="font-size:19px;font-weight:700;color:#fff;margin-bottom:18px">New Exercise</div><input id="en" placeholder="e.g. Bench Press, Squats..." style="width:100%;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.15);border-radius:13px;padding:14px;color:#fff;font-size:16px;outline:none;box-sizing:border-box;margin-bottom:16px"><div style="display:flex;gap:10px"><button onclick="closeModal()" style="flex:1;background:rgba(255,255,255,0.07);border:none;border-radius:13px;padding:15px;color:rgba(255,255,255,0.55);font-size:16px;font-weight:500;cursor:pointer">Cancel</button><button onclick="addExercise()" style="flex:1;background:#ff9500;border:none;border-radius:13px;padding:15px;color:#fff;font-size:16px;font-weight:600;cursor:pointer">Add</button></div>`;showModal();setTimeout(()=>{const e=document.getElementById('en');if(e)e.focus();},350);}
+function addExercise(){const n=document.getElementById('en').value.trim();if(!n)return;const k=fmtKey(gymDate);if(!gymData[k])gymData[k]=[];gymData[k].push({id:exid++,name:n,sets:[]});saveGym();closeModal();renderGym();}
+function openSetModal(eid,si){const k=fmtKey(gymDate);const ex=gymData[k].find(e=>e.id===eid);const s=si!=null&&si>=0?ex.sets[si]:null;document.getElementById('mc').innerHTML=`<div style="font-size:19px;font-weight:700;color:#fff;margin-bottom:4px">${ex.name}</div><div style="font-size:14px;color:rgba(255,255,255,0.35);margin-bottom:18px">${s?'Edit set':'Log a new set'}</div><div style="display:flex;gap:12px;margin-bottom:16px"><div style="flex:1"><div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:7px;font-weight:600;letter-spacing:0.08em">WEIGHT (kg)</div><input id="sw" type="number" inputmode="decimal" placeholder="80" value="${s&&s.w>0?s.w:''}" style="width:100%;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.15);border-radius:13px;padding:14px;color:#fff;font-size:24px;font-weight:600;outline:none;box-sizing:border-box;text-align:center"><div style="font-size:11px;color:rgba(255,255,255,0.22);margin-top:5px;text-align:center">0 = bodyweight</div></div><div style="flex:1"><div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:7px;font-weight:600;letter-spacing:0.08em">REPS</div><input id="sr" type="number" inputmode="numeric" placeholder="10" value="${s?s.r:''}" style="width:100%;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.15);border-radius:13px;padding:14px;color:#fff;font-size:24px;font-weight:600;outline:none;box-sizing:border-box;text-align:center"></div></div><div style="margin-bottom:18px"><div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:9px;font-weight:600;letter-spacing:0.08em">AUTO-START REST TIMER</div><div style="display:flex;gap:8px">${[['None',0],['60s',60],['90s',90],['2m',120],['3m',180]].map(([l,v])=>`<button onclick="setTC(${v})" data-tv="${v}" style="flex:1;background:${v===90?'rgba(255,149,0,0.15)':'rgba(255,255,255,0.06)'};border:0.5px solid ${v===90?'rgba(255,149,0,0.4)':'rgba(255,255,255,0.1)'};border-radius:10px;padding:9px 2px;color:${v===90?'#ff9500':'rgba(255,255,255,0.45)'};font-size:12px;font-weight:500;cursor:pointer">${l}</button>`).join('')}</div></div><div style="display:flex;gap:10px"><button onclick="closeModal()" style="flex:1;background:rgba(255,255,255,0.07);border:none;border-radius:13px;padding:15px;color:rgba(255,255,255,0.55);font-size:16px;font-weight:500;cursor:pointer">Cancel</button><button onclick="saveSet(${eid},${si})" style="flex:1;background:#ff9500;border:none;border-radius:13px;padding:15px;color:#fff;font-size:16px;font-weight:600;cursor:pointer">${s?'Update':'Log Set'}</button></div>`;showModal();}
+let selT=90;
+function setTC(v){selT=v;document.querySelectorAll('#mc button[data-tv]').forEach(b=>{const on=parseInt(b.dataset.tv)===v;b.style.background=on?'rgba(255,149,0,0.15)':'rgba(255,255,255,0.06)';b.style.borderColor=on?'rgba(255,149,0,0.4)':'rgba(255,255,255,0.1)';b.style.color=on?'#ff9500':'rgba(255,255,255,0.45)';});}
+function saveSet(eid,si){const w=parseFloat(document.getElementById('sw').value)||0;const r=parseInt(document.getElementById('sr').value)||0;if(!r)return;const k=fmtKey(gymDate);const ex=gymData[k].find(e=>e.id===eid);if(si!=null&&si>=0)ex.sets[si]={w,r};else ex.sets.push({w,r});const tv=selT;saveGym();closeModal();renderGym();if(tv>0)setTimeout(()=>startTimer(tv),350);}
+function showModal(){selT=90;const md=document.getElementById('md'),ms=document.getElementById('ms');md.style.display='flex';setTimeout(()=>ms.style.transform='translateY(0)',10);md.onclick=e=>{if(e.target===md)closeModal();};}
+function closeModal(){document.getElementById('ms').style.transform='translateY(100%)';setTimeout(()=>{document.getElementById('md').style.display='none';},300);}
+
+// ── HABITS ────────────────────────────────────────────────
+let habitList=load('habitList',[{id:1,name:'Drink 8 glasses of water',streak:0},{id:2,name:'Morning walk — 30 mins',streak:0},{id:3,name:'Meditate 10 mins',streak:0},{id:4,name:'Sleep by 11pm',streak:0},{id:5,name:'No sugar today',streak:0}]);
+let dailyDone=load('dailyDone',{});
+let hid=load('hid',20);
+let habitDate=new Date(),habitDateOffset=0;
+let openHabitCard=null;
+function saveHabits(){save('habitList',habitList);save('dailyDone',dailyDone);save('hid',hid);}
+function habitDateShift(d){habitDateOffset+=d;habitDate=new Date(today);habitDate.setDate(habitDate.getDate()+habitDateOffset);updateHabitDateUI();renderHabits();}
+function updateHabitDateUI(){document.getElementById('hdlbl').textContent=fmtLabel(habitDate);document.getElementById('hdday').textContent=fmtSub(habitDate);document.getElementById('hnext').style.opacity=habitDateOffset>=0?'0.2':'1';document.getElementById('hnext').style.pointerEvents=habitDateOffset>=0?'none':'auto';document.getElementById('habitAddRow').style.display=habitDateOffset===0?'flex':'none';}
+function getHabitDone(id,dk){if(!dailyDone[dk])return false;return dailyDone[dk][id]||false;}
+function setHabitDone(id,dk,val){if(!dailyDone[dk])dailyDone[dk]={};dailyDone[dk][id]=val;}
+function renderHabits(){
+  updateHabitDateUI();const list=document.getElementById('hl');list.innerHTML='';
+  const dk=fmtKey(habitDate);const isToday=habitDateOffset===0;
+  const done=habitList.filter(h=>getHabitDone(h.id,dk)).length;
+  document.getElementById('hp').textContent=`${done} of ${habitList.length} completed`;
+  document.getElementById('hb').style.width=habitList.length?`${Math.round(done/habitList.length*100)}%`:'0%';
+  if(!habitList.length){const e=document.createElement('div');e.style.cssText='text-align:center;padding:40px 22px;color:rgba(255,255,255,0.15);font-size:15px';e.textContent='No habits yet. Add one below!';list.appendChild(e);return;}
+  habitList.forEach(h=>{
+    const isDone=getHabitDone(h.id,dk);
+    const wrap=document.createElement('div');wrap.style.cssText='position:relative;margin:0 22px 10px;border-radius:14px;overflow:hidden;flex-shrink:0';
+    if(isToday){const delbg=document.createElement('div');delbg.style.cssText='position:absolute;right:0;top:0;bottom:0;width:80px;background:#ff3b30;display:flex;align-items:center;justify-content:center;cursor:pointer';delbg.innerHTML='<svg width="20" height="22" viewBox="0 0 18 22" fill="none"><path d="M1 5h16M6 5V3h6v2M14 5l-1 14H5L4 5H14z" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';delbg.onclick=()=>{habitList=habitList.filter(x=>x.id!==h.id);saveHabits();renderHabits();};wrap.appendChild(delbg);}
+    const card=document.createElement('div');card.style.cssText='display:flex;align-items:center;gap:14px;padding:16px;background:#1b1b23;border-radius:14px;will-change:transform;transition:transform 0.28s ease';
+    const chk=document.createElement('div');chk.style.cssText=`width:26px;height:26px;border-radius:7px;border:1.5px solid ${isDone?'#30d158':'rgba(255,255,255,0.2)'};background:${isDone?'#30d158':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s`;
+    if(isDone)chk.innerHTML='<svg width="13" height="11" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 9L11 1" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const info=document.createElement('div');info.style.cssText='flex:1;min-width:0';
+    const nm=document.createElement('div');nm.style.cssText=`font-size:16px;color:${isDone?'rgba(255,255,255,0.28)':'rgba(255,255,255,0.9)'};font-weight:500;${isDone?'text-decoration:line-through':''}`;nm.textContent=h.name;
+    const sk=document.createElement('div');sk.style.cssText='font-size:12px;color:rgba(255,149,0,0.7);margin-top:3px';sk.textContent=h.streak>0?'🔥 '+h.streak+' day streak':'Start your streak today!';
+    info.appendChild(nm);info.appendChild(sk);card.appendChild(chk);card.appendChild(info);wrap.appendChild(card);
+    if(isToday){
+      let sx=0,moved=false,isOpen=false,active=false;
+      card.addEventListener('pointerdown',e=>{if(openHabitCard&&openHabitCard!==card){openHabitCard.style.transform='';openHabitCard=null;}sx=e.clientX;moved=false;active=true;card.style.transition='none';try{card.setPointerCapture(e.pointerId);}catch(e){}});
+      card.addEventListener('pointermove',e=>{if(!active)return;const dx=e.clientX-sx;if(Math.abs(dx)>6)moved=true;if(moved)card.style.transform=`translateX(${Math.min(0,Math.max((isOpen?-80:0)+dx,-80))}px)`;});
+      card.addEventListener('pointerup',e=>{if(!active)return;active=false;card.style.transition='transform 0.28s ease';const pos=(isOpen?-80:0)+(e.clientX-sx);if(pos<-36){card.style.transform='translateX(-80px)';isOpen=true;openHabitCard=card;}else{card.style.transform='';isOpen=false;if(openHabitCard===card)openHabitCard=null;if(!moved){setHabitDone(h.id,dk,!isDone);if(!isDone)h.streak++;else h.streak=Math.max(0,h.streak-1);saveHabits();renderHabits();}}});
+    }
+    list.appendChild(wrap);
+  });
+}
+function addHabit(){const i=document.getElementById('hi'),n=i.value.trim();if(!n)return;habitList.push({id:hid++,name:n,streak:0});saveHabits();i.value='';renderHabits();}
+document.getElementById('hi').addEventListener('keydown',e=>{if(e.key==='Enter')addHabit();});
+
+// ── NAV ──────────────────────────────────────────────────
+const navC=['#0a84ff','#ff9500','#30d158'];
+const screens=[document.getElementById('s0'),document.getElementById('s1'),document.getElementById('s2')];
+function nav(i){
+  screens.forEach((s,j)=>{s.className='scr'+(j===i?' active':'');});
+  [0,1,2].forEach(j=>{
+    const on=j===i,c=navC[j],dim='rgba(255,255,255,0.28)';
+    document.getElementById('pill'+j).style.opacity=on?'1':'0';
+    document.getElementById('lb'+j).style.color=on?c:dim;
+    const ic=document.getElementById('ic'+j);ic.style.background=on?c+'28':'transparent';
+    ic.querySelectorAll('svg [stroke]').forEach(el=>{if(el.getAttribute('stroke')!=='none')el.setAttribute('stroke',on?c:dim);});
+    ic.querySelectorAll('svg [fill]').forEach(el=>{const f=el.getAttribute('fill');if(f&&f!=='none'&&f!=='white'&&!f.startsWith('url'))el.setAttribute('fill',on?c:dim);});
+  });
+  if(i===2)renderHabits();
+}
+
+// ── INIT ─────────────────────────────────────────────────
+renderTasks();renderGym();updateHabitDateUI();renderHabits();
+// Show lock screen on load
+showLock();
+</script>
+</body>
+</html>
